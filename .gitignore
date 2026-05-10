@@ -1,0 +1,21 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# AI assistants
+CLAUDE.md
+.claude/
+.claude.md
+.aider*
+.cursor/
+.continue/
+.codex/
+.gemini/
+GEMINI.md
+.windsurf*
+.cline/
+clinerules*
+
+# Backups
+*.bak
+*.backup

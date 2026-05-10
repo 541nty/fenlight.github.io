@@ -1,0 +1,10 @@
+v2.2.14 - UK Trending lists + updater filename fix + credits + BACKLOG
+v2.2.13 - Decoupled FenLight from skin.fentastic helper.
+v2.2.12 - Rating Filter (Settings -> Content). Per-source threshold.
+v2.2.11 - Skin-helper cache integration so per-source rating icons match tile rating.
+v2.2.10 - Lazy-fill MDbList ratings on cached metadata; self-healing.
+v2.2.9  - Configurable rating source for tile display (TMDb / IMDb / IMDb Popular / RT Critic / RT Audience / Metacritic).
+v2.2.8  - Cache-layer perf bundle: WAL mode, per-thread connection pool, debrid_cache row-0 TTL fix, HTTP timeouts everywhere.
+v2.2.7  - TMDb v4 Read Access Token surfaced in GUI.
+v2.2.6  - Lists cache no longer poisons on transient TMDB errors.
+v2.2.5  - Service crash + stale defaults fix; addon icon URL pulls from configured update.username/location.

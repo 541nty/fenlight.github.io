@@ -1,0 +1,76 @@
+name: Sync from plugin.video.fenlight
+
+on:
+  schedule:
+    - cron: '17 * * * *'   # hourly at xx:17
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      SOURCE_REPO: 541nty/plugin.video.fenlight
+      ADDON_ID: plugin.video.fenlight
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get latest source-repo release
+        id: src
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RAW=$(gh api repos/${SOURCE_REPO}/releases/latest --jq '{tag: .tag_name, body: .body, asset: (.assets | map(select(.name | startswith(env.ADDON_ID) and endswith(".zip"))) | .[0].name)}')
+          echo "$RAW"
+          TAG=$(echo "$RAW" | jq -r .tag)
+          ASSET=$(echo "$RAW" | jq -r .asset)
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "asset=$ASSET" >> "$GITHUB_OUTPUT"
+          echo "$RAW" | jq -r .body > /tmp/release_body.md
+
+      - name: Compare with currently published version
+        id: cmp
+        run: |
+          CURRENT=$(cat packages/fenlight_version 2>/dev/null || echo "")
+          if [ "$CURRENT" = "${{ steps.src.outputs.version }}" ]; then
+            echo "Already in sync at $CURRENT"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Out of sync — local '$CURRENT' vs upstream '${{ steps.src.outputs.version }}'"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download new asset
+        if: steps.cmp.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download ${{ steps.src.outputs.tag }} -R ${SOURCE_REPO} -p "${{ steps.src.outputs.asset }}" -O "packages/${{ steps.src.outputs.asset }}" --clobber
+
+      - name: Update version + changes manifests
+        if: steps.cmp.outputs.skip != 'true'
+        run: |
+          printf "%s" "${{ steps.src.outputs.version }}" > packages/fenlight_version
+          printf "%s" "${{ steps.src.outputs.version }}" > packages/fenlightam_version
+          # Prepend the new release's body to the changes file
+          {
+            printf "v%s\n" "${{ steps.src.outputs.version }}"
+            cat /tmp/release_body.md
+            printf "\n\n"
+            cat packages/fenlight_changes 2>/dev/null || true
+          } > packages/fenlight_changes.new
+          mv packages/fenlight_changes.new packages/fenlight_changes
+          cp packages/fenlight_changes packages/fenlightam_changes
+
+      - name: Commit and push
+        if: steps.cmp.outputs.skip != 'true'
+        run: |
+          git config user.name '541nty-bot'
+          git config user.email '283427176+541nty@users.noreply.github.com'
+          git add packages/
+          git commit -m "Sync v${{ steps.src.outputs.version }} from ${SOURCE_REPO}"
+          git push
